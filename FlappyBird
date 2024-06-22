@@ -1,0 +1,207 @@
+code to run flappybird
+
+import javax.swing.*;
+
+public class FlappyBird {
+    public static void main(String[] args) {
+        JFrame frame = new JFrame("Flappy Bird");
+        GamePanel gamePanel = new GamePanel();
+
+        frame.add(gamePanel);
+        frame.setSize(800, 600);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setResizable(false);
+        frame.setVisible(true);
+
+        gamePanel.startGame();
+    }
+}
+###########################################################
+code to make a bird
+
+import java.awt.*;
+
+class Bird {
+    public static final int RADIUS = 20;
+    private int x;
+    private int y;
+    private double velocity;
+    private static final double GRAVITY = 0.5;
+    private static final double FLAP_STRENGTH = -8;
+
+    public Bird() {
+        x = 100;
+        y = 300;
+        velocity = 0;
+    }
+
+    public void update() {
+        velocity += GRAVITY;
+        y += velocity;
+        if (y < 0) {
+            y = 0;
+            velocity = 0;
+        }
+    }
+
+    public void flap() {
+        velocity = FLAP_STRENGTH;
+    }
+
+    public void draw(Graphics g) {
+        g.setColor(Color.YELLOW);
+        g.fillOval(x, y, RADIUS * 2, RADIUS * 2);
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public Rectangle getBounds() {
+        return new Rectangle(x, y, RADIUS * 2, RADIUS * 2);
+    }
+###########################################################
+GamePanel code
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.List;
+
+class GamePanel extends JPanel implements ActionListener {
+    private Timer timer;
+    private Bird bird;
+    private List<Pipe> pipes;
+    private int score;
+    private boolean gameOver;
+
+    public GamePanel() {
+        setFocusable(true);
+        setBackground(Color.CYAN);
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+                    bird.flap();
+                }
+            }
+        });
+        bird = new Bird();
+        pipes = new ArrayList<>();
+        timer = new Timer(20, this);
+        score = 0;
+        gameOver = false;
+    }
+
+    public void startGame() {
+        timer.start();
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (!gameOver) {
+            bird.update();
+            updatePipes();
+            checkCollisions();
+            repaint();
+        }
+    }
+
+    private void updatePipes() {
+        if (pipes.isEmpty() || pipes.get(pipes.size() - 1).getX() < 600) {
+            pipes.add(new Pipe());
+        }
+        List<Pipe> toRemove = new ArrayList<>();
+        for (Pipe pipe : pipes) {
+            pipe.update();
+            if (pipe.isOffScreen()) {
+                toRemove.add(pipe);
+                score++;
+            }
+        }
+        pipes.removeAll(toRemove);
+    }
+
+    private void checkCollisions() {
+        for (Pipe pipe : pipes) {
+            if (pipe.collides(bird)) {
+                gameOver = true;
+            }
+        }
+        if (bird.getY() >= getHeight() - Bird.RADIUS * 2) {
+            gameOver = true;
+        }
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        bird.draw(g);
+        for (Pipe pipe : pipes) {
+            pipe.draw(g);
+        }
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.BOLD, 20));
+        g.drawString("Score: " + score, 10, 20);
+
+        if (gameOver) {
+            g.setFont(new Font("Arial", Font.BOLD, 50));
+            g.drawString("Game Over", getWidth() / 2 - 150, getHeight() / 2);
+        }
+    }
+}
+#######################################################
+Code For Pipe
+
+import java.awt.*;
+import java.util.Random;
+
+class Pipe {
+    private int x;
+    private int height;
+    private static final int WIDTH = 80;
+    private static final int GAP = 200;
+    private static final int SPEED = 5;
+    private int canvasHeight;
+
+    public Pipe() {
+        this.x = 800;
+        this.canvasHeight = 600;
+        Random rand = new Random();
+        this.height = rand.nextInt(canvasHeight - GAP);
+    }
+
+    public void update() {
+        x -= SPEED;
+    }
+
+    public boolean isOffScreen() {
+        return x + WIDTH < 0;
+    }
+
+    public boolean collides(Bird bird) {
+        return bird.getBounds().intersects(getTopBounds()) || bird.getBounds().intersects(getBottomBounds());
+    }
+
+    public void draw(Graphics g) {
+        g.setColor(Color.GREEN);
+        g.fillRect(x, 0, WIDTH, height);
+        g.fillRect(x, height + GAP, WIDTH, canvasHeight - height - GAP);
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    private Rectangle getTopBounds() {
+        return new Rectangle(x, 0, WIDTH, height);
+    }
+
+    private Rectangle getBottomBounds() {
+        return new Rectangle(x, height + GAP, WIDTH, canvasHeight - height - GAP);
+    }
+}
